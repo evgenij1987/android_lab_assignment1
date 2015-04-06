@@ -1,1 +1,0 @@
-tcpclient.d: ../tcpclient.c
