@@ -52,9 +52,8 @@ int main( argc, argv) {
 	}
 
 
-	//after creation of socket set socket option
+	/** Setting socket options**/
 	struct timeval tv;
-
 	tv.tv_sec = 3;  /* 3 Secs Timeout */
 
 	if((success_setting_options=setsockopt(s, SOL_SOCKET, SO_RCVTIMEO,(struct timeval *)&tv,sizeof(struct timeval)))<0){
@@ -63,6 +62,8 @@ int main( argc, argv) {
 	}
 
 
+
+	/*Establishing tcp connection*/
 	if (connect(s, (struct sockaddr *) &remote_addr, sizeof(struct sockaddr))
 			< 0) {
 		perror("connect");
@@ -71,30 +72,30 @@ int main( argc, argv) {
 
 	printf("connected to server\n");
 
+
 	char *string="BenLim";//received from input
 	printf("size of message to be sent: %1u \n", sizeof(string));
 	printf("size of request header: %1u \n", sizeof(request_header));
+
+	/*Creating packet*/
 	char buffer[((sizeof(request_header)+sizeof(string)))];// allocate buffer size needed for a packet
 	printf("size of  final packet: %1u \n", sizeof(buffer));
 
-	request_header *rHeader=( request_header*)buffer;//show to the beginning of buffer
-	rHeader->type=0x01;
-	rHeader->len_first_name=0x03;
-	rHeader->len_last_name=0x03;
+	request_header *reqHeader=( request_header*)buffer;//show to the beginning of buffer
+	reqHeader->type=JOKER_REQUEST_TYPE;
+	reqHeader->len_first_name=3;
+	reqHeader->len_last_name=3;
 
 
 
 	//show to payload where text begins
 	char * payload=buffer+sizeof(request_header);
 
-	////fill buffer with character received from user in string
-	int i=0;
-	int string_lenght=strlen(string);
-	for(i=0;i<string_lenght;i++){
-		*payload=*string;//writy to memory the pointer points at
-		string++;//increment the pointer to get all leters from string to buffer
-		payload++;
-	}
+
+	//copy string to packet which is going to be sent
+	strncpy(payload, string, strlen(string));
+
+	printf("payload to be sent %s \n", payload);
 	printf("packet size to be sent: %1u \n", sizeof(buffer));
 	if((len_sent = send(s, buffer, sizeof(buffer), 0))<0){
 		perror("write");
@@ -111,7 +112,7 @@ int main( argc, argv) {
 	//we have to detect different messages by the header and display them
 
 
-	//buf[len_received] = '\0';
+
 
 	response_header * resHeader=(response_header * )buf;
 	char * message=buf+sizeof(response_header);
@@ -120,17 +121,20 @@ int main( argc, argv) {
 		printf("joke size & junk: %d\n", strlen(message));
 		printf("joke with junk: %s\n", message);
 
-		//if server send to much as expected message
-		if(resHeader->len_joke>=strlen(message)){
-			uint32_t len_joke=ntohl(resHeader->len_joke);
+		uint32_t len_joke=ntohl(resHeader->len_joke);
+
+		//if server send to more than just the joke copy the joke part to new string
+		if(len_joke<strlen(message)){
+
 			char joke_part[len_joke];
-			//memset(joke_part, '\0', sizeof(joke_part));
+
 			strncpy(joke_part, message, len_joke);
 			joke_part[len_joke+1]='\0';//mark end of new string
-			//memcpy(joke_part,&message[0], resHeader->len_joke-1);//copy only the characters expected lenght
+
 			printf("pure joke: %s\n", joke_part);
 
 		}
+
 
 	}
 
