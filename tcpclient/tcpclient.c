@@ -38,14 +38,14 @@ typedef struct {
 int main( argc, argv) {
 	int s, len_sent, len_received, success_setting_options;
 	struct sockaddr_in remote_addr;
-	char buf[BUFSIZ];
+	char recvbuffer[BUFSIZ];
 
 	memset(&remote_addr, 0, sizeof(remote_addr));
 	remote_addr.sin_family = AF_INET;
-	//remote_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	remote_addr.sin_addr.s_addr = inet_addr("137.226.59.41");
-	//remote_addr.sin_port = htons(8000);
-	remote_addr.sin_port = htons(2345);
+	remote_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	//remote_addr.sin_addr.s_addr = inet_addr("137.226.59.41");
+	remote_addr.sin_port = htons(8000);
+	//remote_addr.sin_port = htons(2345);
 	if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket");
 		return 1;
@@ -102,37 +102,44 @@ int main( argc, argv) {
 		return 1;
 	};
 	//receive a buffer, take BUFSIZE as size so far
-	if((len_received = recv(s, buf, BUFSIZ, 0))<0){
+	if((len_received = recv(s, recvbuffer, BUFSIZ, 0))<0){
 		perror("read");
 		return 1;
 	}
-	printf("received response packet size: %d \n", sizeof(buf));
-	printf("len_received %1u \n", sizeof(buf));
+	printf("received response packet size: %d \n", sizeof(recvbuffer));
+	printf("len_received %1u \n", sizeof(recvbuffer));
 	//we read allways buf from socket buffer until end of message-> recv in loop
 	//we have to detect different messages by the header and display them
 
 
 
 
-	response_header * resHeader=(response_header * )buf;
-	char * message=buf+sizeof(response_header);
-	if(resHeader->type==2){
+	response_header * resHeader=(response_header * )recvbuffer;
+	char * message=recvbuffer+sizeof(response_header);
+	if(resHeader->type==JOKER_RESPONSE_TYPE){
 		printf("expected joke size: %d \n",ntohl(resHeader->len_joke));
 		printf("joke size & junk: %d\n", strlen(message));
 		printf("joke with junk: %s\n", message);
 
 		uint32_t len_joke=ntohl(resHeader->len_joke);
-
+		char joke_part[len_joke];
 		//if server send to more than just the joke copy the joke part to new string
 		if(len_joke<strlen(message)){
 
-			char joke_part[len_joke];
+
 
 			strncpy(joke_part, message, len_joke);
 			joke_part[len_joke+1]='\0';//mark end of new string
 
 			printf("pure joke: %s\n", joke_part);
 
+		}else{//test this case with own server
+			//joke_part is smaller that the message, which mean we need to read the socket again untill all of the message is
+			//arrived in socket
+			strcpy(joke_part, message);//store allready the part of the joke here
+			do{
+				strcat(joke_part, message);
+			}while(strlen(joke_part)<strlen(message));
 		}
 
 
@@ -141,6 +148,6 @@ int main( argc, argv) {
 
 
 	close(s);
-	printf("  socket closed: %s\n", buf);
+	printf("  socket closed: %s\n", recvbuffer);
 	return 0;
 }
