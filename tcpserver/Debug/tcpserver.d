@@ -1,1 +1,3 @@
-tcpserver.d: ../tcpserver.c
+tcpserver.d: ../tcpserver.c ../tcpserver.h
+
+../tcpserver.h:

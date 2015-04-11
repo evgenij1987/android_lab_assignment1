@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../connection.c \
 ../tcpserver.c 
 
 OBJS += \
+./connection.o \
 ./tcpserver.o 
 
 C_DEPS += \
+./connection.d \
 ./tcpserver.d 
 
 
