@@ -54,7 +54,7 @@ int main( argc, argv) {
 
 	/** Setting socket options**/
 	struct timeval tv;
-	tv.tv_sec = 3;  /* 3 Secs Timeout */
+	tv.tv_sec = 120;  /* 3 Secs Timeout */
 
 	if((success_setting_options=setsockopt(s, SOL_SOCKET, SO_RCVTIMEO,(struct timeval *)&tv,sizeof(struct timeval)))<0){
 		perror("setsocketopt");
@@ -124,7 +124,7 @@ int main( argc, argv) {
 		uint32_t len_joke=ntohl(resHeader->len_joke);
 		char joke_part[len_joke];
 		//if server send to more than just the joke copy the joke part to new string
-		if(len_joke<strlen(message)){
+		if(len_joke<=strlen(message)){
 
 
 
@@ -133,13 +133,8 @@ int main( argc, argv) {
 
 			printf("pure joke: %s\n", joke_part);
 
-		}else{//test this case with own server
-			//joke_part is smaller that the message, which mean we need to read the socket again untill all of the message is
-			//arrived in socket
-			strcpy(joke_part, message);//store allready the part of the joke here
-			do{
-				strcat(joke_part, message);
-			}while(strlen(joke_part)<strlen(message));
+		}else{
+			//TODO what if not all data received yet?
 		}
 
 

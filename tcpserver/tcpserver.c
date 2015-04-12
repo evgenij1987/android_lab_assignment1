@@ -15,8 +15,11 @@
 #include<unistd.h>
 #include<pthread.h>
 #include "tcpserver.h"
-char * getRandomJoke(char* fname, char* lname,uint8_t fname_len, uint8_t lname_len);
+#include <time.h>
 
+#define OVER_EXICTED_HASH_LENGHT 10
+size_t get_random_joke(char* fname, char* lname,uint8_t fname_len, uint8_t lname_len, char ** ppjoke);
+char * randstring(size_t length) ;
 int counter_concurrent_clients=0; /* global thread counter*/
 pthread_mutex_t lock; /*global lock */
 
@@ -111,15 +114,17 @@ void *connection_handler(void * arg)
 			//get random joke
 			//char joke[strlen(JOKE1) + reqHeader->len_first_name
 				//	+ reqHeader->len_last_name];
-			char * joke=getRandomJoke(fname, lname,reqHeader->len_first_name,reqHeader->len_last_name);
+			char *joke_with_junk;
+			size_t pure_joke_len=get_random_joke(fname, lname,reqHeader->len_first_name,reqHeader->len_last_name, &joke_with_junk);
 			//sprintf(joke, JOKE1, fname, lname);
 			/*create packet big enough for header+ joke*/
-			char response[(sizeof(response_header) + strlen(joke))];
+			char response[(sizeof(response_header) + strlen(joke_with_junk))];
 			response_header resHeader;
 			resHeader.type = JOKER_RESPONSE_TYPE;
-			resHeader.len_joke = htonl(strlen(joke)); //make network byte order as client expects
+			resHeader.len_joke = htonl(pure_joke_len); //make network byte order as client expects
 			memcpy(response, (char *) &resHeader, sizeof(response_header));
-			memcpy(response + sizeof(response_header), joke, strlen(joke));
+			memcpy(response + sizeof(response_header), joke_with_junk, strlen(joke_with_junk));
+
 			printf("%s\n", response);
 			/*send packet*/
 			//sleep(5);timeout test
@@ -127,13 +132,17 @@ void *connection_handler(void * arg)
 				perror("receive");
 				return 0;
 			};
+
 			printf("packet sent %s", response);
+
+
+
 		/*else respond that the request is malformed*/
 		} else {
 
 			//if ((len_send = send(fd, "Malformed \n", 10, 0)) < 0) {
 			if ((len_send = send(sock, buf, 10, 0)) < 0) {
-				perror("receive");
+				perror("send");
 				return 0;
 			};
 		}
@@ -150,6 +159,7 @@ void *connection_handler(void * arg)
         perror("recv failed");
       }
       //this way new sockets can be accepted
+
       decrement_concurrent_clients();
       printf("thread no %d :termination", no);
     return 0;
@@ -175,8 +185,19 @@ void decrement_concurrent_clients(){
 	counter_concurrent_clients--;
 	pthread_mutex_unlock(&lock);
 }
-
-char * getRandomJoke(char* fname, char* lname,uint8_t fname_len, uint8_t lname_len){
+/**
+ * Chooses one from 10 jokes randomly.
+ * Joke is allocated  ppjoke pointer will be pointed to it.
+ * Random character are appended to the joke string. But function returns
+ * the lenght of the pure joke
+ * @param fname
+ * @param lname
+ * @param fname_len
+ * @param lname_len
+ * @param ppjoke pointer to a pointer pointing to NULL so far
+ * @return pure joke lenght without random characters
+ */
+size_t get_random_joke(char* fname, char* lname,uint8_t fname_len, uint8_t lname_len, char ** ppjoke){
 
 	const char *jokes[10];
 		jokes[0] = JOKE0;
@@ -191,15 +212,53 @@ char * getRandomJoke(char* fname, char* lname,uint8_t fname_len, uint8_t lname_l
 		jokes[9] = JOKE9;
 
 	int n = rand() % 9 + 1;
-	//int b=rand() % 1 + 1;
+	srand(time(NULL));
+	int b = rand() % 2;
 
-	char * c=(char *)malloc((strlen(jokes[n])+fname_len+lname_len));
+	size_t overexcitement_hash_len;
 
+	if(b==0){
+		overexcitement_hash_len=0;
+	}else{
+		overexcitement_hash_len=OVER_EXICTED_HASH_LENGHT;
 
+	}
+	//let second pointer, which is pointing to NULL point now to newly allocated memory
+	*ppjoke=(char *)malloc((strlen(jokes[n])+fname_len+lname_len+overexcitement_hash_len));
 
-	sprintf(c,jokes[n], fname, lname);
+	//now inhabite newly allocated memory to which second pointer is poiting
+	sprintf((char *)*ppjoke,jokes[n], fname, lname);
 
-	return c;
+	//joke legnht without junk
+	size_t joke_len=strlen(*ppjoke);
+
+	//append junk randomly
+	if(overexcitement_hash_len>0){
+		char *hash=randstring(overexcitement_hash_len);
+		strcat(*ppjoke, hash);
+	}
+	return joke_len;
 }
 
+char * randstring(size_t length) {
+
+    static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
+    char *randomString = NULL;
+
+    if (length) {
+        randomString = malloc(sizeof(char) * (length +1));
+
+        if (randomString) {
+        	int n;
+            for ( n = 0;n < length;n++) {
+                int key = rand() % (int)(sizeof(charset) -1);
+                randomString[n] = charset[key];
+            }
+
+            randomString[length] = '\0';
+        }
+    }
+
+    return randomString;
+}
 
