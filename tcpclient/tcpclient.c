@@ -10,6 +10,7 @@
  * My TCP client for the server running on laboratory.comsys.rwth-aachen.de:2345
  *
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -18,13 +19,16 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h> /* memset */
+#include <netdb.h>
 
 #define JOKER_REQUEST_TYPE 1
 #define JOKER_RESPONSE_TYPE 2
-
+#define MAX_LEN_NAME 20
 
 size_t receiveJoke(int s);
-
+int sendall(int s, char *buf);
+struct sockaddr_in * lookUpAdress(char * domain, char * port);
+int createConnection(char * domain, char * port);
 typedef struct {
 	uint8_t type;
 	uint32_t len_joke;
@@ -38,75 +42,52 @@ typedef struct {
 
 
 
-int main( argc, argv) {
-	int s, len_sent, len_received, success_setting_options;
-	struct sockaddr_in remote_addr;
+int main(int argc, char * argv[]) {
 
 
-	memset(&remote_addr, 0, sizeof(remote_addr));
-	remote_addr.sin_family = AF_INET;
-	//remote_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	remote_addr.sin_addr.s_addr = inet_addr("137.226.59.41");
-	//remote_addr.sin_port = htons(8000);
-	remote_addr.sin_port = htons(2345);
-	if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("socket");
+	if (argc != 3) {
+		fprintf(stderr, "Please provide hostname and port \n");
 		return 1;
 	}
 
-
-	/** Setting socket options
-	struct timeval tv;
-	tv.tv_sec = 3;
-
-	if((success_setting_options=setsockopt(s, SOL_SOCKET, SO_RCVTIMEO,(struct timeval *)&tv,sizeof(struct timeval)))<0){
-		perror("setsocketopt");
-		return 1;
-	}
-	**/
+	char fname[MAX_LEN_NAME];
+	char lname[MAX_LEN_NAME];
 
 
-	/*Establishing tcp connection*/
-	if (connect(s, (struct sockaddr *) &remote_addr, sizeof(struct sockaddr))
-			< 0) {
-		perror("connect");
-		return 1;
-	}
+	puts("Please provide your firstname:");
+	scanf("%s", fname);
+	int len_fname=strlen(fname);
 
-	printf("connected to server\n");
+	puts("Please provide your lastname: ");
+	scanf("%s",  lname);
+	int len_lname=strlen(lname);
 
+	char string[len_fname+len_lname];
+	sprintf(string,"%s%s", fname, lname);
 
-	char *string = "BenLim"; //received from input
-	//printf("size of message to be sent: %1u \n", sizeof(string));
-	//printf("size of request header: %1u \n", sizeof(request_header));
-	/*Creating packet*/
+	/** Create packet**/
 	char buffer[((sizeof(request_header) + strlen(string)))]; // allocate buffer size needed for a packet
-	//printf("size of final packet: %1u \n", sizeof(buffer));
-
 	request_header *reqHeader = (request_header*) buffer; //show to the beginning of buffer
 	reqHeader->type = JOKER_REQUEST_TYPE;
-	reqHeader->len_first_name = 3;
-	reqHeader->len_last_name = 3;
+	reqHeader->len_first_name = len_fname;
+	reqHeader->len_last_name = len_lname;
 	//show to payload where text begins
 	char * payload = buffer + sizeof(request_header);
 	//copy string to packet which is going to be sent
 	strncpy(payload, string, strlen(string));
-	//printf("payload to be sent %s \n", payload);
-	//printf("packet size to be sent: %1u \n", sizeof(buffer));
-	if ((len_sent = send(s, buffer, sizeof(buffer), 0)) < 0) {
-		perror("write");
-		return 1;
-	};
 
 
+	/*connect to  the server*/
+	int socket=createConnection(argv[1], argv[2]);
 
+	/*send our packet*/
+	sendall(socket, buffer );
 
-
-
-	size_t lenght=receiveJoke(s);
+	/*receive response spacket*/
+	size_t lenght=receiveJoke(socket);
 
 	printf("Joke length %d\n", lenght);
-	close(s);
+	close(socket);
 	puts("socket closed \n");
 	return 0;
 }
@@ -114,10 +95,10 @@ int main( argc, argv) {
 size_t receiveJoke(int s){
 
 
-	int total_bytes_received=0;
+
 	int received=0;
 	int header_found=0;
-	char tmark;
+
 	char  header_buffer[5];
 	response_header * res_header;
 
@@ -143,18 +124,25 @@ size_t receiveJoke(int s){
 
 		/* Now get the joke, with appropriate lenght received from header */
 		uint32_t len_joke=ntohl(res_header->len_joke);
+		int total_bytes_received=0;
 		char joke_buffer[len_joke];/*buffer for the whole joke*/
-		char joke_part_buffer[len_joke];
+		joke_buffer[0]='\0';
+
+		char part_buffer[len_joke];
+		char * joke_part_buffer=part_buffer;
 		int joke_part_received=0;
+		int left_bytes_to_read=0;
 
 		while(total_bytes_received<len_joke){
-			if((joke_part_received=recv(s, joke_part_buffer, len_joke,0))<=0){
+			left_bytes_to_read=len_joke-total_bytes_received;
+			if((joke_part_received=recv(s, joke_part_buffer, left_bytes_to_read,0))<=0){
 					perror("nothing received");
 					return -1;
 			}
 			total_bytes_received+=joke_part_received;
 			joke_part_buffer[joke_part_received]='\0';
 			strcat(joke_buffer, joke_part_buffer);//append part of joke to the whole
+			joke_part_buffer+=joke_part_received;//to not fill entire buffer, but just the letter which are left
 		}
 		joke_buffer[len_joke]='\0';
 
@@ -162,5 +150,79 @@ size_t receiveJoke(int s){
 		printf("joke:%s \n",joke_buffer);
 
 	return len_joke;
+}
+
+int sendall(int s, char *buf)
+{
+    int total = 0;        // how many bytes we've sent
+    int bytesleft = strlen(buf); // how many we have left to send
+    int n;
+
+    while(total < strlen(buf)) {
+        n = send(s, buf+total, bytesleft, 0);
+        if (n == -1) { break; }
+        total += n;
+        bytesleft -= n;
+    }
+
+
+
+    return n==-1?-1:total; // return -1 on failure, 0 on success
+}
+
+int createConnection(char * domain, char * port){
+	int s;
+
+
+	struct addrinfo * adress=(struct addrinfo *)lookUpAdress(domain, port);
+
+	/* Create socket*/
+	if ((s = socket(adress->ai_family, adress->ai_socktype, 0)) < 0) {
+		perror("socket");
+		return 1;
+	}
+
+
+
+
+	/** Setting socket options */
+		 struct timeval timeout;
+		    timeout.tv_sec = 3;
+		    timeout.tv_usec = 0;
+
+	if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout,
+			sizeof(timeout)) < 0)
+		perror("setsockopt failed\n");
+
+
+		/*Establishing tcp connection*/
+		if (connect(s,  adress->ai_addr, adress->ai_addrlen)
+				< 0) {
+			perror("connect");
+			return 1;
+		}
+
+		printf("connected to server\n");
+		return s;
+}
+
+
+
+struct sockaddr_in * lookUpAdress(char * domain, char * port){
+
+	struct addrinfo hints;
+	struct addrinfo *servinfo;
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;//IP/IPv6
+	hints.ai_socktype = SOCK_STREAM;//TCP
+	hints.ai_flags = AI_PASSIVE;
+	int addrinfo_status;
+	if((addrinfo_status=getaddrinfo(domain, port, &hints, &servinfo))!=0)
+	{
+			fprintf(stderr, "Error occured while calling getaddrinfo: %s.\n", gai_strerror(addrinfo_status));
+			return -1;
+	}
+	return servinfo;
 }
 
