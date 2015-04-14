@@ -13,7 +13,7 @@
 
 #define JOKE0 "%s %s compiles his code in his head and throws warnings."
 #define JOKE1 "%s %s starts his terminal right after waking up."
-#define JOKE2 "Ask a %s %s to review 10 lines of code, he'll find 10 issues. Ask him to do 500 lines and he'll say it looks good"
+#define JOKE2 "Ask  %s %s to review 10 lines of code, he'll find 10 issues. Ask him to do 500 lines and he'll say it looks good"
 #define JOKE3 "%s %s 's wife calls him and tells him, 'While you're out, buy some milk'.He never returns home."
 #define JOKE4 "%s %s's girlfriend: 'Are you going to sit and type in front of that thing all day or are you going out with me?\n'Programmer: 'Yes.'"
 #define JOKE5 "Stackoveflow.com? No, %s %s knows all command!!!! "

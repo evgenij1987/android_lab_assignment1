@@ -125,7 +125,7 @@ void *connection_handler(void * arg)
 			memcpy(response, (char *) &resHeader, sizeof(response_header));
 			memcpy(response + sizeof(response_header), joke_with_junk, strlen(joke_with_junk));
 
-			printf("%s\n", response);
+			printf("%s \n", response);
 			/*send packet*/
 			//sleep(5);timeout test
 			if ((len_send = send(sock, response, sizeof(response), 0)) < 0) {
