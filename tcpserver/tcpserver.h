@@ -22,25 +22,24 @@
 #define JOKE8 "%s %s does not need an IDE, he debugs via command line only."
 #define JOKE9 "%s %s thinks IDEs are for girls"
 
-
 typedef struct {
-uint8_t type;
-uint32_t len_joke;
+	uint8_t type;
+	uint32_t len_joke;
 }__attribute__ ((__packed__)) response_header;
 
 typedef struct {
-uint8_t type;
-uint8_t len_first_name;
-uint8_t len_last_name;
+	uint8_t type;
+	uint8_t len_first_name;
+	uint8_t len_last_name;
 }__attribute__ ((__packed__)) request_header;
 
 typedef struct {
 	int thread_no;
 	int client_socket;
-}thread_args;
+} thread_args;
 
 int accept_connection(int server_socket);
-int create_server_socket(int port);
+int create_server_socket();
 void *connection_handler(void *);
 void increment_concurrent_clients();
 void decrement_concurrent_clients();
