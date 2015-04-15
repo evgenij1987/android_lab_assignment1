@@ -10,6 +10,8 @@
 #define MAX_CONCURRENT_CLIENTS 2
 #define JOKER_REQUEST_TYPE 1
 #define JOKER_RESPONSE_TYPE 2
+#define OVER_EXICTED_HASH_LENGHT 10
+#define SLEEPTIME 4
 
 #define JOKE0 "%s %s compiles his code in his head and throws warnings."
 #define JOKE1 "%s %s starts his terminal right after waking up."
@@ -43,5 +45,6 @@ int create_server_socket();
 void *connection_handler(void *);
 void increment_concurrent_clients();
 void decrement_concurrent_clients();
+int sendall(int s, char *buf, int lenght);
 
 #endif /* TCPSERVER_H_ */

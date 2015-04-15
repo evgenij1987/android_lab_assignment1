@@ -90,3 +90,25 @@ int accept_connection(int server_socket) {
 	}
 	return client_socket;
 }
+/**
+ * Makes sure the whole buffer passed is sent through the socket
+ * @param buf
+ * @param s the socket
+ */
+int sendall(int s, char *buf, int lenght)
+{
+    int total = 0;        // how many bytes we've sent
+    int bytesleft = lenght; // how many we have left to send
+    int n;
+
+    while(total < lenght) {
+        n = send(s, buf+total, bytesleft, 0);
+        if (n == -1) { break; }
+        total += n;
+        bytesleft -= n;
+    }
+
+
+
+    return n==-1?-1:total;
+}

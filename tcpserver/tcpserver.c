@@ -19,10 +19,11 @@
 #include "tcpserver.h"
 //#include "connection.c"
 
-#define OVER_EXICTED_HASH_LENGHT 10
+
 
 size_t get_random_joke(char* fname, char* lname, uint8_t fname_len, uint8_t lname_len, char ** ppjoke);
 char * randstring(size_t length);
+bool shouldbehavecrazy();
 int counter_concurrent_clients = 0; //global thread counter
 pthread_mutex_t lock; //global lock
 
@@ -143,7 +144,7 @@ void *connection_handler(void * arg) {
 
 	free(first_name_buffer);
 	free(last_name_buffer);
-	printf("Sent to the client: %s\n", joke_with_junk);
+	printf("Going to sent to the client: %s\n", joke_with_junk);
 	uint32_t joke_length = strlen(joke_with_junk);
 
 	response_struct_size = sizeof(response_header);
@@ -156,13 +157,29 @@ void *connection_handler(void * arg) {
 	char *payload = buffer + response_struct_size;
 	strncpy(payload, joke_with_junk, joke_length);
 
-	int bytes_sent = send(socketfd, buffer, buffer_size, 0);
+	//simulate sleepy server
+	if(shouldbehavecrazy()){
+		sleep(SLEEPTIME);//trigger client timeout
+	}
+
+	/** Send joke**/
+	int bytes_sent;
+	//simulate sleepy junk sending server
+	if(shouldbehavecrazy()){
+		//sent junk in 1 of 4 times
+		char * junk=randstring(10);
+		 bytes_sent = sendall(socketfd, junk, strlen(junk));
+	}else{
+		//in 3 of 4 times respond properly
+		bytes_sent = sendall(socketfd, buffer, buffer_size);
+	}
+
 	free(buffer);
 	free(joke_with_junk);
 	if (bytes_sent == -1) {
 		printf("Error while sending joke");
 	}
-
+	/*notify main thread about you leaving*/
 	decrement_concurrent_clients();
 	printf("Thread no %d :termination", thread_number);
 	return 0;
@@ -253,5 +270,15 @@ char * randstring(size_t length) {
 	}
 
 	return randomString;
+}
+/**
+ * Returns true with a probility of  1/4
+ */
+bool shouldbehavecrazy(){
+	int n = rand() % 4 + 1;
+	if(n==1)
+		return true;
+	else
+		return false;
 }
 
