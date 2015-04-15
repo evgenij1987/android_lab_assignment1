@@ -17,7 +17,7 @@
 #include <stdbool.h>
 
 #include "tcpserver.h"
-#include "connection.c"
+//#include "connection.c"
 
 #define OVER_EXICTED_HASH_LENGHT 10
 
@@ -136,7 +136,7 @@ void *connection_handler(void * arg) {
 	printf("%s \n", last_name_buffer);
 
 	//send a joke to the client
-	char joke[] = "Always and forever %s %s googles with regexps.";
+	//char joke[] = "Always and forever %s %s googles with regexps.";
 	char *joke_with_junk;
 	size_t pure_joke_len = get_random_joke(first_name_buffer, last_name_buffer, len_of_first_name, len_of_last_name,
 			&joke_with_junk);

@@ -6,11 +6,13 @@
  */
 
 #include <sys/socket.h>
+
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <netdb.h>
-
+#include <string.h>
+#include <netinet/tcp.h>
 #define BACKLOG 1 // how many pending connections queue will hold
 #define PORT "2345"  // the port users will be connecting to
 
@@ -49,6 +51,12 @@ int create_server_socket() {
 	if (bind(socketfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
 		close(socketfd);
 		fprintf(stderr, "Error in bind.\n");
+		return -1;
+	}
+
+	int qlen = 5; //max 5 pending TFO connections in queue!
+	if(setsockopt(socketfd, SOL_TCP, TCP_FASTOPEN, &qlen, sizeof(qlen))==-1){
+		fprintf(stderr, "Socket option: tcp fast open not set.\n");
 		return -1;
 	}
 
