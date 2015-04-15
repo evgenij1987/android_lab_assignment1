@@ -119,8 +119,8 @@ void *connection_handler(void * arg) {
 	len_of_first_name = client_header.len_first_name;
 	len_of_last_name = client_header.len_last_name;
 
-	first_name_buffer = (char *) malloc(len_of_first_name);
-	last_name_buffer = (char *) malloc(len_of_last_name);
+	first_name_buffer = (char *) malloc(len_of_first_name + 1);
+	last_name_buffer = (char *) malloc(len_of_last_name + 1);
 	recv_bytes_for_first_name = recv(socketfd, first_name_buffer, len_of_first_name, 0);
 	first_name_buffer[len_of_first_name] = '\0';
 	recv_bytes_for_last_name = recv(socketfd, last_name_buffer, len_of_last_name, 0);
